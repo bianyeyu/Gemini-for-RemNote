@@ -1,22 +1,21 @@
 {
+  "author": "Nova",
+  "name": "Gemini for RemNote",
+  "description": "Use Gemini in RemNote!",
+  "enableOnMobile": false,
+  "id": "Nova-gphbnyn",
   "manifestVersion": 1,
-  "id": "plugin_template",
-  "name": "Plugin Template",
-  "author": "remnote",
-  "repoUrl": "",
   "version": {
     "major": 0,
     "minor": 0,
     "patch": 1
   },
-  "theme": [],
-  "enableOnMobile": false,
-  "description": "",
   "requestNative": false,
+  "repoUrl": "https://github.com/bianyeyu/Gemini-for-RemNote",
   "requiredScopes": [
-    {
-      "type": "All",
-      "level": "Read"
-    }
-  ]
+  {
+    "type": "All",
+    "level": "ReadCreateModify"
+  }
+] 
 }

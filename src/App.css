@@ -1,1 +1,61 @@
 /* Add your plugin styles here. */
+.chat-history {
+    height: 300px; /* Adjust height as needed */
+    overflow-y: auto;
+    padding: 10px;
+    border: 1px solid lightgray;
+    border-radius: 5px;
+  }
+  
+  .chat-message {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 5px;
+  }
+  
+  /* ... (other styles) */
+
+    .chat-message.user {
+    background-color: #e9f5ff; /* Light blue for user messages */
+    text-align: right;       /* Align user text to the right */
+  }
+  
+    .chat-message.model {
+    background-color: #f5f5f5; /* Light gray for model messages */
+    text-align: left;        /* Align model text to the left */
+  }
+  
+  .input-area {
+    display: flex;
+    margin-top: 10px;
+  }
+  
+  .input-area input[type="text"] {
+    flex-grow: 1;
+    padding: 8px;
+    border: 1px solid lightgray;
+    border-radius: 5px;
+  }
+  
+  .input-area button {
+    margin-left: 8px;
+    padding: 8px 12px;
+    background-color: #4CAF50; /* Green background for buttons */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .user-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid lightgray;
+    border-radius: 5px;
+    margin-top: 10px;
+  }
+  
+  .button-container {
+    display: flex;
+    justify-content: space-around; /* Space buttons evenly */
+    margin-top: 10px;
+  }
