@@ -20,6 +20,10 @@ html,
   -moz-tab-size: 4; /* 3 */
   tab-size: 4; /* 3 */
 }
+/* 在 style.css 或 App.css 中添加 */
+.break-word {
+  overflow-wrap: break-word;
+}
 
 /*
 1. Remove the margin in all browsers.

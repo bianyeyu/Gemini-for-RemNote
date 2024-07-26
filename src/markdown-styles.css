@@ -1,0 +1,68 @@
+/* markdown-styles.css */
+.chat-history  ReactMarkdown { /* 在 chat-history 下的 ReactMarkdown 元素中应用样式 */
+    /* 标题样式 */
+    h1, h2, h3, h4, h5, h6 {
+      font-weight: bold;
+      margin-bottom: 0.5em;
+    }
+  
+    h1 {
+      font-size: 1.5em;
+    }
+  
+    h2 {
+      font-size: 1.25em;
+    }
+  
+    /* 列表样式 */
+    ul, ol {
+      margin-bottom: 1em;
+      padding-left: 2em;
+    }
+  
+    /* 代码块样式 */
+    pre {
+      background-color: #eee;
+      padding: 1em;
+      overflow-x: auto;
+    }
+  
+    code {
+      background-color: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+    }
+  
+    /* 粗体和斜体样式 */
+    strong {
+      font-weight: bold;
+    }
+  
+    em {
+      font-style: italic;
+    }
+  
+    /* 链接样式 */
+    a {
+      color: blue;
+      text-decoration: underline;
+    }
+  
+    /* 图片样式 */
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+  
+    /* 表格样式 */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 1em;
+    }
+  
+    th, td {
+      border: 1px solid #ddd;
+      padding: 0.5em;
+    }
+  }
