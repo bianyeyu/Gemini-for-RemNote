@@ -7,7 +7,7 @@ import '../markdown-styles.css';
 
 interface ChatMessage {
   role: 'user' | 'model';
-  parts: Array<{ text?: string, image_url?: string }>;
+  parts: Array<{ text?: string, inline_data?: { mime_type: string, data: string } }>;
 }
 
 export const SampleWidget = () => {
@@ -34,8 +34,8 @@ export const SampleWidget = () => {
     const model = genAI.getGenerativeModel({ model: geminiModel || 'gemini-1.5-pro' });
   
     let messages = [...chatHistory];
-    if (systemInstructions && messages.length === 0) {
-      messages.unshift({ role: 'user', parts: [{ text: `System Instructions: ${systemInstructions}` }] });
+    if (systemInstructions) {
+      messages.unshift({ role: 'user', parts: [{ text: systemInstructions }] });
     }
   
     const messagesToCount = [...messages, { role: 'user', parts: [{ text: userInput }] }];
@@ -62,9 +62,6 @@ export const SampleWidget = () => {
 
   const handleClearChat = () => {
     setChatHistory([]);
-    if (systemInstructions) {
-      setChatHistory([{ role: 'user', parts: [{ text: `System Instructions: ${systemInstructions}` }] }]);
-    }
   };
 
   const handleSaveChat = () => {
@@ -80,8 +77,8 @@ export const SampleWidget = () => {
         if (part.text) {
           chatText += part.text;
         }
-        if (part.image_url) {
-          chatText += `[Image: ${part.image_url}]`;
+        if (part.inline_data) {
+          chatText += `[Image: ${part.inline_data.mime_type}]`;
         }
       });
       chatText += '\n';
@@ -100,8 +97,8 @@ export const SampleWidget = () => {
     plugin.app.toast('Chat history saved!');
   };
 
-  const handleUserInput = async (inputParts: Array<{ text?: string, image_url?: string }> = [{ text: userInput }]) => {
-    if (inputParts.length === 0 || (inputParts.length === 1 && !inputParts[0].text && !inputParts[0].image_url)) return;
+  const handleUserInput = async (inputParts: Array<{ text?: string, inline_data?: { mime_type: string, data: string } }> = [{ text: userInput }]) => {
+    if (inputParts.length === 0 || (inputParts.length === 1 && !inputParts[0].text && !inputParts[0].inline_data)) return;
 
     if (!apiKey) {
       plugin.app.toast('Please enter your Gemini API key in the settings.');
@@ -116,7 +113,7 @@ export const SampleWidget = () => {
       
       let messages: ChatMessage[] = [...chatHistory];
       if (systemInstructions && messages.length === 0) {
-        messages.unshift({ role: 'user', parts: [{ text: `System Instructions: ${systemInstructions}` }] });
+        messages.unshift({ role: 'user', parts: [{ text: systemInstructions }] });
       }
       messages.push(userMessage);
 
@@ -149,8 +146,16 @@ export const SampleWidget = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64 = reader.result as string;
-        handleUserInput([{ image_url: base64 }, { text: userInput }]);
+        const base64 = (reader.result as string).split(',')[1]; // Remove the data URL prefix
+        handleUserInput([
+          { 
+            inline_data: { 
+              mime_type: file.type, 
+              data: base64 
+            } 
+          },
+          { text: userInput }
+        ]);
       };
       reader.readAsDataURL(file);
     }
@@ -186,8 +191,12 @@ export const SampleWidget = () => {
               {part.text && (
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
               )}
-              {part.image_url && (
-                <img src={part.image_url} alt="Uploaded content" className="max-w-full h-auto" />
+              {part.inline_data && (
+                <img 
+                  src={`data:${part.inline_data.mime_type};base64,${part.inline_data.data}`} 
+                  alt="Uploaded content" 
+                  className="max-w-full h-auto" 
+                />
               )}
             </div>
           ))}
