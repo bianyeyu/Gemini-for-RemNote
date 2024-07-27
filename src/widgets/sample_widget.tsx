@@ -8,6 +8,7 @@ import '../markdown-styles.css';
 interface ChatMessage {
   role: 'user' | 'model';
   parts: Array<{ text?: string, inline_data?: { mime_type: string, data: string } }>;
+  isSystemPrompt?: boolean;
 }
 
 export const SampleWidget = () => {
@@ -15,6 +16,7 @@ export const SampleWidget = () => {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [userInput, setUserInput] = useState('');
   const [tokenCount, setTokenCount] = useState(0);
+  const [generatingResponse, setGeneratingResponse] = useState(false);
   const apiKey = useTracker(() =>
     plugin.settings.getSetting<string>('gemini-api-key'),
   );
@@ -28,17 +30,25 @@ export const SampleWidget = () => {
   const chatHistoryContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    initializeChat();
+  }, [systemInstructions]);
+
+  const initializeChat = () => {
+    if (systemInstructions) {
+      setChatHistory([{ role: 'user', parts: [{ text: systemInstructions }], isSystemPrompt: true }]);
+    } else {
+      setChatHistory([]);
+    }
+  };
+
   const countConversationTokens = async (): Promise<number> => {
     if (!apiKey) return 0;
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: geminiModel || 'gemini-1.5-pro' });
   
-    let messages = [...chatHistory];
-    if (systemInstructions) {
-      messages.unshift({ role: 'user', parts: [{ text: systemInstructions }] });
-    }
-  
-    const messagesToCount = [...messages, { role: 'user', parts: [{ text: userInput }] }];
+    const messagesToCount = chatHistory.map(msg => ({ role: msg.role, parts: msg.parts }));
+    messagesToCount.push({ role: 'user', parts: [{ text: userInput }] });
   
     const { totalTokens } = await model.countTokens({ contents: messagesToCount });
     return totalTokens;
@@ -50,7 +60,7 @@ export const SampleWidget = () => {
       setTokenCount(count);
     };
     updateTokenCount();
-  }, [chatHistory, userInput, apiKey, geminiModel, systemInstructions]);
+  }, [chatHistory, userInput, apiKey, geminiModel]);
 
   useEffect(() => {
     const bottomIconBar = document.getElementById('bottom-icon-bar');
@@ -61,7 +71,7 @@ export const SampleWidget = () => {
   }, []);
 
   const handleClearChat = () => {
-    setChatHistory([]);
+    initializeChat();
   };
 
   const handleSaveChat = () => {
@@ -72,13 +82,13 @@ export const SampleWidget = () => {
 
     let chatText = '';
     chatHistory.forEach((message) => {
-      chatText += `${message.role.toUpperCase()}: `;
+      chatText += `${message.isSystemPrompt ? 'SYSTEM' : message.role.toUpperCase()}: `;
       message.parts.forEach((part) => {
         if (part.text) {
           chatText += part.text;
         }
         if (part.inline_data) {
-          chatText += `[Image: ${part.inline_data.mime_type}]`;
+          chatText += `[${part.inline_data.mime_type.split('/')[0]}]`;
         }
       });
       chatText += '\n';
@@ -97,8 +107,9 @@ export const SampleWidget = () => {
     plugin.app.toast('Chat history saved!');
   };
 
-  const handleUserInput = async (inputParts: Array<{ text?: string, inline_data?: { mime_type: string, data: string } }> = [{ text: userInput }]) => {
-    if (inputParts.length === 0 || (inputParts.length === 1 && !inputParts[0].text && !inputParts[0].inline_data)) return;
+  
+  const handleUserInput = async (inputParts: Array<{ text?: string, inline_data?: { mime_type: string, data: string } }> = []) => {
+    if (inputParts.length === 0 && !userInput.trim()) return;
 
     if (!apiKey) {
       plugin.app.toast('Please enter your Gemini API key in the settings.');
@@ -109,55 +120,105 @@ export const SampleWidget = () => {
     const model = genAI.getGenerativeModel({ model: geminiModel || 'gemini-1.5-pro' });
 
     try {
-      let userMessage: ChatMessage = { role: 'user', parts: inputParts };
-      
-      let messages: ChatMessage[] = [...chatHistory];
-      if (systemInstructions && messages.length === 0) {
-        messages.unshift({ role: 'user', parts: [{ text: systemInstructions }] });
-      }
-      messages.push(userMessage);
+      let userMessage: ChatMessage = { 
+        role: 'user', 
+        parts: inputParts.length > 0 ? inputParts : [{ text: userInput }]
+      };
 
-      const result = await model.generateContent({
-        contents: messages,
+      setChatHistory((prevHistory) => [
+        ...prevHistory,
+        userMessage,
+        { role: 'model', parts: [{ text: '' }] }, // Add an empty model message for streaming
+      ]);
+      setGeneratingResponse(true);
+      setUserInput('');
+      
+      let messages: ChatMessage[] = [...chatHistory, userMessage];
+
+      // Ensure the system prompt is always the first message
+      const systemPrompt = messages.find(msg => msg.isSystemPrompt);
+      if (systemPrompt) {
+        messages = [systemPrompt, ...messages.filter(msg => !msg.isSystemPrompt)];
+      }
+
+      const result = await model.generateContentStream({
+        contents: messages.map(msg => ({ role: msg.role, parts: msg.parts })),
         generationConfig: {
           maxOutputTokens: 1000,
         },
       });
 
-      const response = await result.response;
-      const text = response.text();
+      let streamedText = '';
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        streamedText += chunkText;
 
-      setChatHistory((prevHistory) => [
-        ...prevHistory,
-        userMessage,
-        { role: 'model', parts: [{ text: text }] },
-      ]);
+        setChatHistory((prevHistory) => {
+          const lastMessage = prevHistory[prevHistory.length - 1];
+          if (lastMessage.role === 'model') {
+            return [
+              ...prevHistory.slice(0, -1), 
+              { ...lastMessage, parts: [{ text: streamedText }] }
+            ];
+          } else {
+            return prevHistory;
+          }
+        });
+      }
 
-      setUserInput('');
+      setGeneratingResponse(false);
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       plugin.app.toast(`Error communicating with Gemini API: ${errorMessage}`);
       console.error('Gemini API Error:', error);
+      setGeneratingResponse(false);
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = (reader.result as string).split(',')[1]; // Remove the data URL prefix
-        handleUserInput([
-          { 
-            inline_data: { 
-              mime_type: file.type, 
-              data: base64 
-            } 
-          },
-          { text: userInput }
-        ]);
-      };
-      reader.readAsDataURL(file);
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
+
+    const filePromises = Array.from(files).map(file => {
+      if (file.size > MAX_FILE_SIZE) {
+        plugin.app.toast(`File ${file.name} exceeds 15MB limit and will be skipped.`);
+        return Promise.resolve(null);
+      }
+
+      // Only process image files
+      if (!file.type.startsWith('image/')) {
+        plugin.app.toast(`File ${file.name} is not an image and will be skipped.`);
+        return Promise.resolve(null);
+      }
+
+      return new Promise<{ mime_type: string, data: string } | null>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve({ mime_type: file.type, data: base64 });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+
+    try {
+      const fileParts = (await Promise.all(filePromises)).filter(part => part !== null) as Array<{ mime_type: string, data: string }>;
+      if (fileParts.length > 0) {
+        const inputParts = [
+          ...fileParts.map(part => ({ inline_data: part })),
+          { text: userInput || "Please describe this image." }
+        ];
+        handleUserInput(inputParts);
+      } else {
+        plugin.app.toast('No valid images were uploaded.');
+      }
+    } catch (error) {
+      plugin.app.toast('Error processing files. Please try again or use smaller files.');
+      console.error('File processing error:', error);
     }
   };
 
@@ -174,35 +235,39 @@ export const SampleWidget = () => {
         ref={chatHistoryContainerRef} 
       > 
        <div className="chat-history">
-      {chatHistory.map((message, index) => (
-        <div
-          key={index}
-          className={`p-3 mb-1 rounded-lg bg-white text-gray-800 ${
-            message.role === 'user'
-              ? ' self-end'
-              : ' self-start'
-          }`}
-        >
-          <p className="text-sm font-bold">
-            <strong>{message.role === 'user' ? 'You' : 'Gemini'}</strong>
-          </p>
-          {message.parts.map((part, partIndex) => (
-            <div key={partIndex}>
-              {part.text && (
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
-              )}
-              {part.inline_data && (
-                <img 
-                  src={`data:${part.inline_data.mime_type};base64,${part.inline_data.data}`} 
-                  alt="Uploaded content" 
-                  className="max-w-full h-auto" 
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
+        {chatHistory.map((message, index) => (
+          <div
+            key={index}
+            className={`p-3 mb-1 rounded-lg bg-white text-gray-800 ${
+              message.role === 'user'
+                ? ' self-end'
+                : ' self-start'
+            }`}
+          >
+            <p className="text-sm font-bold">
+              <strong>{message.isSystemPrompt ? 'System Prompts' : message.role === 'user' ? 'You' : 'Gemini'}</strong>
+            </p>
+            {message.parts.map((part, partIndex) => (
+              <div key={partIndex}>
+                {part.text && (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
+                )}
+                {part.inline_data && (
+                  part.inline_data.mime_type.startsWith('image/') ? (
+                    <img 
+                      src={`data:${part.inline_data.mime_type};base64,${part.inline_data.data}`} 
+                      alt="Uploaded content" 
+                      className="max-w-full h-auto" 
+                    />
+                  ) : (
+                    <p>Unsupported file type: {part.inline_data.mime_type}</p>
+                  )
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
       </div>
       <div className="flex flex-col mb-4">  
         <textarea 
@@ -231,6 +296,7 @@ export const SampleWidget = () => {
             style={{ display: 'none' }}
             onChange={handleFileUpload}
             accept="image/*"
+            multiple
           />
           <button className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-lg mr-2" onClick={handleClearChat}>
             🗑️

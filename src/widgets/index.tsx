@@ -21,23 +21,6 @@ async function onActivate(plugin: ReactRNPlugin) {
     description: 'Optional system instructions for Gemini.',
   });
 
-  // Create Knowledge Base powerup Rem
-  const kbRem = await plugin.rem.createRem();
-  if (kbRem) {
-    await kbRem.setText(['#GeminiKB']);
-  } else {
-    plugin.app.toast('Failed to create knowledge base Rem!');
-    return;
-  }
-
-  // Store KB Rem ID in settings
-  await plugin.settings.registerStringSetting({
-    id: 'knowledge-base-rem-id',
-    title: 'Knowledge Base Rem ID (Do Not Modify)',
-    description: 'Internal setting for the plugin. Do not modify.',
-    defaultValue: kbRem._id,
-  });
-
   // Register Gemini Model setting
   await plugin.settings.registerDropdownSetting({
     id: 'gemini-model',
@@ -50,9 +33,44 @@ async function onActivate(plugin: ReactRNPlugin) {
     defaultValue: 'gemini-1.5-flash',
   });
 
+  // Register Knowledge Base setting
+  await plugin.settings.registerStringSetting({
+    id: 'knowledge-base-tag',
+    title: 'Knowledge Base Tag',
+    description: 'Enter the tag used for Knowledge Base Rem (e.g., #KnowledgeBase)',
+  });
+
   // Register the sidebar widget
   await plugin.app.registerWidget('sample_widget', WidgetLocation.RightSidebar, {
     dimensions: { height: 'auto', width: '100%' },
+  });
+  // Register a custom Power-up tag for the Knowledge Base
+  await plugin.app.registerPowerup({
+    name: 'Gemini Knowledge Base',
+    code: 'geminiKB',
+    description: 'Marks Rems as part of the Gemini Knowledge Base',
+    options: { 
+      properties: [] // No additional properties needed for this power-up
+    } // 添加了 options 参数
+  });
+
+  // Register slash command to add Knowledge Base tag
+  await plugin.app.registerCommand({
+    id: 'gemini-add-to-knowledge-base',
+    name: 'Gemini: Add to Knowledge Base',
+    description: 'Add the selected Rem(s) to the Gemini Knowledge Base',
+    action: async () => {
+      const selection = await plugin.editor.getSelection();
+
+      if (selection && selection.type === SelectionType.Rem) { // 使用导入的 SelectionType
+        // Get the Rem objects from the selection
+        const selectedRems = await plugin.rem.findMany(selection.remIds);
+
+        // ... (rest of the code is the same)
+      } else {
+        await plugin.app.toast('Please select one or more Rems.');
+      }
+    },
   });
 }
 
