@@ -1,6 +1,6 @@
 # Gemini for RemNote
 
-Use Gemini in RemNote !
+Use Gemini in RemNote Sidebar!
 
 ## Currently supported things
 
@@ -11,7 +11,12 @@ Use Gemini in RemNote !
 5. token counter
 6. System prompt words (test)
 
-## Things that need improvement
+## Small notes
+
+1. When using the sidebar, the sidebar should be fixed and not switched, otherwise the chat history will be refreshed and cleared directly.
+2. After modifying the system prompt word, please close the sidebar and reopen it. If you see the system prompt word displayed in the chat box, it will work normally.
+
+## Things planned to improve
 
 1. System prompt words (there are problems with the current implementation logic and will be improved in the future)
 2. Image upload (the logic of direct upload is a bit problematic, you should be able to revise it yourself)
@@ -30,7 +35,12 @@ Use Gemini in RemNote !
 5. token 计数器
 6. 系统提示词（试验）
 
-## 需要改进的东西
+## 小注意事项
+
+1. 在侧边栏使用的时候应该将侧边栏固定住且不要进行切换，否则否直接刷新清空聊天记录。
+2. 在修改系统提示词后请关闭侧边栏并重新打开，若看见系统提示词显示进聊天框，则正常工作。
+
+## 计划改进的东西
 
 1. 系统提示词（目前的实现逻辑存在问题，未来改进）
 2. 图片上传（直接上传的逻辑有点问题，应该可以自己修订）

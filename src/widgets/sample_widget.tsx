@@ -230,39 +230,53 @@ export const SampleWidget = () => {
         Token Count: {tokenCount}
       </div>
 
-      <div 
-        className="flex-grow overflow-y-auto mb-4" 
-        ref={chatHistoryContainerRef} 
-      > 
-       <div className="chat-history">
-        {chatHistory.map((message, index) => (
-          <div
-            key={index}
-            className={`p-3 mb-1 rounded-lg bg-white text-gray-800 ${
-              message.role === 'user'
-                ? ' self-end'
-                : ' self-start'
-            }`}
-          >
-            <p className="text-sm font-bold">
-              <strong>{message.isSystemPrompt ? 'System Prompts' : message.role === 'user' ? 'You' : 'Gemini'}</strong>
-            </p>
-            {message.parts.map((part, partIndex) => (
-              <div key={partIndex}>
-                {part.text && (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
-                )}
-                {part.inline_data && (
-                  part.inline_data.mime_type.startsWith('image/') ? (
-                    <img 
-                      src={`data:${part.inline_data.mime_type};base64,${part.inline_data.data}`} 
-                      alt="Uploaded content" 
-                      className="max-w-full h-auto" 
-                    />
-                  ) : (
-                    <p>Unsupported file type: {part.inline_data.mime_type}</p>
-                  )
-                )}
+      <div
+      className="flex-grow overflow-y-auto mb-4"
+      ref={chatHistoryContainerRef}
+    >
+      <div className="chat-history">
+        {chatHistory.reduce((acc, message, index) => {
+          const previousMessage = index > 0 ? chatHistory[index - 1] : null;
+
+          // Group user messages and the immediately following model message
+          if (message.role === 'model' && previousMessage && previousMessage.role === 'user') {
+            acc[acc.length - 1].push(message);
+          } else {
+            acc.push([message]);
+          }
+          return acc;
+        }, [] as ChatMessage[][]).map((messageGroup, groupIndex) => (
+          <div key={groupIndex} className="mb-1"> {/* 调整分组边距 */}
+            {messageGroup.map((message, messageIndex) => (
+              <div
+                key={messageIndex}
+                className={`p-3 rounded-lg bg-white text-gray-800 ${
+                  message.role === 'user'
+                    ? 'self-end'
+                    : 'self-start'
+                } ${message.role === 'user' ? (messageIndex === 0 ? 'mt-0' : 'mt-1') : 'mt-0'}`} // 精确控制边距
+              >
+                <p className="text-sm font-bold mb-1">
+                  <strong>{message.isSystemPrompt ? 'System Prompts' : message.role === 'user' ? 'You' : 'Gemini'}</strong>
+                </p>
+                {message.parts.map((part, partIndex) => (
+                  <div key={partIndex}>
+                    {part.text && (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
+                    )}
+                    {part.inline_data && (
+                      part.inline_data.mime_type.startsWith('image/') ? (
+                        <img
+                          src={`data:${part.inline_data.mime_type};base64,${part.inline_data.data}`}
+                          alt="Uploaded content"
+                          className="max-w-full h-auto"
+                        />
+                      ) : (
+                        <p>Unsupported file type: {part.inline_data.mime_type}</p>
+                      )
+                    )}
+                  </div>
+                ))}
               </div>
             ))}
           </div>

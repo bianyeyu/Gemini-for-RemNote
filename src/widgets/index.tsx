@@ -33,16 +33,10 @@ async function onActivate(plugin: ReactRNPlugin) {
     defaultValue: 'gemini-1.5-flash',
   });
 
-  // Register Knowledge Base setting
-  await plugin.settings.registerStringSetting({
-    id: 'knowledge-base-tag',
-    title: 'Knowledge Base Tag',
-    description: 'Enter the tag used for Knowledge Base Rem (e.g., #KnowledgeBase)',
-  });
-
   // Register the sidebar widget
   await plugin.app.registerWidget('sample_widget', WidgetLocation.RightSidebar, {
     dimensions: { height: 'auto', width: '100%' },
+    widgetTabIcon: "https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png",
   });
   // Register a custom Power-up tag for the Knowledge Base
   await plugin.app.registerPowerup({
